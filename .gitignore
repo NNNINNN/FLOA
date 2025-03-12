@@ -1,0 +1,8 @@
+.idea
+.venv
+build
+dist
+floa.egg-info
+floa/__pycache__
+floa/.idea
+main.py
