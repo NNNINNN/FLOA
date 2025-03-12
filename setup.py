@@ -11,7 +11,7 @@ setup(
     version='0.0.1',  # 版本号
     author='NNNINNN',  # 作者名
     author_email='jianningwork@outlook.com',  # 作者邮箱
-    description='A Python framework for quick building AI workflow.',  # 包的简短描述
+    description='Quick building AI workflow.',  # 包的简短描述
     long_description=long_description,  # 包的详细描述（从 README.md 读取）
     long_description_content_type='text/markdown',  # 指定详细描述的格式为 Markdown
     url='https://github.com/NNNINNN/FLOA',  # 项目地址
