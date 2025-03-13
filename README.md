@@ -1,4 +1,4 @@
-![Issue Image](readme/logo.png)  
+![Image](readme/logo.png)  
 
 <span>
 <img src=https://img.shields.io/badge/version-0.0.1-blue>
@@ -8,23 +8,28 @@
 
 FLOA是一个Python框架 , 用于快速搭建AI工作流 / A Python framework for quick building AI workflow.
 
+
+
 ---
 
-### 安装与使用
+### 安装
 
 ```shell
 pip install floa
 ```
 
-### 例子
-![Issue Image](readme/Example_1.png)
+### 使用
+例子：通过继承Basic_node实现节点功能，搭建一个如图所示的工作流  
+
+![Image](readme/Example_1.png)  
+
 ```python
 from floa import Output_manager, Basic_node
 import random
 
 
 class RandomNum_node(Basic_node):
-    "随机节点"
+    "0~10随机数字节点"
 
     def input(self):
         pass
@@ -152,14 +157,118 @@ n1.run_chain()
 奇数,没有进入循环,15
 ```
 
+
+
+例子：通过继承Basic_node_async搭建一个支持异步并发的工作流
+
+![image](readme/Example_2.png)
+
+```python
+import asyncio
+from floa import Output_manager_async, Basic_node_async
+import random
+
+class async_node(Basic_node_async):
+    def __init__(self,om,semaphore,name):
+        super().__init__(om,semaphore)
+        self.name = name
+    def input(self, *args):
+        for arg in args:
+            self.create_input_verify(arg)
+    def output(self):
+        self.o_output = self.create_output_required()
+    async def core(self):
+        t = random.randint(1, 2)
+        print(f"运行: {self.name},休眠:{t},剩余可运行线程数:{self.semaphore._value}")
+        await asyncio.sleep(t)
+        print(f"结束: {self.name},耗时:{t},剩余可运行线程数:{self.semaphore._value}")
+        self.o_output.complete(t)
+        return True
+
+async def main():
+    semaphore = asyncio.Semaphore(5)
+    om_async = Output_manager_async(semaphore)
+    a1 = async_node(om_async, semaphore, "A1")
+    a2 = async_node(om_async, semaphore, "A2")
+    a3 = async_node(om_async, semaphore, "A3")
+    a4 = async_node(om_async, semaphore, "A4")
+    a5 = async_node(om_async, semaphore, "A5")
+    a6 = async_node(om_async, semaphore, "A6")
+    a7 = async_node(om_async, semaphore, "A7")
+    a8 = async_node(om_async, semaphore, "A8")
+    b1 = async_node(om_async, semaphore, "B1")
+    b2 = async_node(om_async, semaphore, "B2")
+    b3 = async_node(om_async, semaphore, "B3")
+    c1 = async_node(om_async, semaphore, "C1")
+    b1.input(a1.o_output,a2.o_output,a3.o_output,)
+    b2.input(a4.o_output, a5.o_output,a6.o_output)
+    b3.input(a7.o_output, a8.o_output)
+    c1.input(b1.o_output,b2.o_output,b3.o_output)
+    await c1.run()
+
+asyncio.run(main())
+```
+输出:
+```
+运行: A1,休眠:1,剩余可运行线程数:5
+运行: A2,休眠:1,剩余可运行线程数:4
+运行: A3,休眠:2,剩余可运行线程数:3
+运行: A4,休眠:1,剩余可运行线程数:2
+运行: A5,休眠:1,剩余可运行线程数:1
+运行: A6,休眠:2,剩余可运行线程数:0
+结束: A1,耗时:1,剩余可运行线程数:0
+结束: A2,耗时:1,剩余可运行线程数:0
+结束: A5,耗时:1,剩余可运行线程数:0
+结束: A4,耗时:1,剩余可运行线程数:1
+运行: A7,休眠:1,剩余可运行线程数:2
+运行: A8,休眠:1,剩余可运行线程数:2
+结束: A6,耗时:2,剩余可运行线程数:2
+结束: A7,耗时:1,剩余可运行线程数:3
+结束: A3,耗时:2,剩余可运行线程数:4
+结束: A8,耗时:1,剩余可运行线程数:5
+运行: B2,休眠:2,剩余可运行线程数:5
+运行: B1,休眠:1,剩余可运行线程数:4
+运行: B3,休眠:1,剩余可运行线程数:3
+结束: B1,耗时:1,剩余可运行线程数:3
+结束: B3,耗时:1,剩余可运行线程数:4
+结束: B2,耗时:2,剩余可运行线程数:5
+运行: C1,休眠:2,剩余可运行线程数:5
+结束: C1,耗时:2,剩余可运行线程数:5
+```
+
+---
+#### 运行节点的三种方法:  
+
+**node.run()** : 运行本节点，node为节点实例。
+![Image](readme/01_run.png)
+
+**node.run()** : 链式运行。
+![Image](readme/02_run_chain.png)
+
+**om.run_all_outputs()** ：运行所有节点，om为Output_manager实例。
+![Image](readme/03_run_all_outputs.png)
+
+#### 通过输出的激活与否来达到节点分支的功能
+![Image](readme/04_if.png)
+
+#### 可以在节点core函中实现节点的循环
+![Image](readme/05_for.png)
+
+#### 可以在节点core函中实现复杂的节点嵌套
+![Image](readme/06_nesting.png)
+
+---
+
 ### 项目结构
 ```
 floa/               
 ├── output.py    # 输出值对象
 └── node.py      # 基础节点
 ```
+---
 
-**Output** 对象核心是管理一个 "值" -> Output.value，以及这个值的上下游节点的关系
+### Output (class)
+**Output** 对象核心是管理一个 "值" -> Output.value，以及与这个值的上下游节点的关系
 
 ```python
 from floa import Output
@@ -174,7 +283,44 @@ print("上游节点有运行结果后对o使用o.complete(10)进行赋值o.value
 上游节点有运行结果后对o使用o.complete(10)进行赋值o.value: 10
 ```
 
-一般情况我们都不用Output创建输出对象，而是使用**Output_manager**对象创建，用它管理一个工作流的Output
+Output 包含以下属性和方法：
+
+#### 属性
+- **parent**: 父节点，表示该输出的来源节点。
+
+- **active**: 表示该输出(本对象)是否处于活动状态，如果这个值为False那么所有连接了这个输出的下游节点都会失效。
+
+- **done**: 表示该输出(本对象)是否已完成，上游节点完成了计算。
+
+- **value**: 输出的值，Output核心，整个对象就是为了管理这个值，这个值可以是任何类型的数据。
+
+- **child**: 子节点列表，表示所有引用了这个输出值(Output.value)的下游节点。
+
+#### 方法
+- **\_\_init__(self, parent=None, value=None, active=True, done=False)**: 初始化输出对象。
+
+- **\_\_call__(self)**: 返回输出值(Output.value)。
+
+- **\_\_str__(self)**: 返回输出值(Output.value)的字符串表示。
+
+- **\_\_repr__(self)**: 返回输出值(Output.value)的字符串表示。
+
+- **complete(self, value)**: 标记本Output对象完成并设置值。
+
+- **activate(self)**: 激活输出对象(Output.active)。
+
+- **activate_and_complete(self, value, parent)**: 激活输出对象可用并设置完成，同时设置父节点。
+
+- **deactivate(self)**: 把输出对象标记为不可用。
+
+- **is_deactivated(self)**: 输出对象是否为不可用。
+
+- **val**: 属性，返回输出值(Output.done)。
+----
+
+### Output_manager(class)
+**Output_manager** 类用于管理输出(**Output**)对象。所有的 **Output** 对象都应该由 **Output_mansager** 创建。 
+它将会管理一个工作流的Output
 
 ```python
 from floa import Output_manager
@@ -205,19 +351,36 @@ print("使用activate_and_complete进行赋值激活:",o.value)
 使用activate_and_complete进行赋值激活: 10
 ```
 
-**Basic_node** 是所有节点的基类。你可以通过继承它来定义输入输出（input/output），然后在 core 里写代码，实现具体的节点功能。
+Output_manager 包含以下属性和方法：
+
+#### 属性
+**output_list**: 用于存储**Output**对象列表。
+
+__init__(self): 初始化输出管理器。
+
+- **create_output_required(self, parent, value=None, active=True, done=False) -> Output**: 创建一个必定有输出值的Output对象。节点计算完成后必定会对这个对象进行赋值(Output.value)，
+
+- **create_output_optional(self, parent=None, value=None, active=False, done=False) -> Output**: 创建一个未激活的Output对象。节点运行完毕后决定不要不要激活这个Output，一般作为控制节点分支使用
+
+- **create_output_complete(self, value, parent=None, active=True, done=True) -> Output**: 创建一个已完成的Output对象。一般作为常量使用
+
+- **run_all_outputs(self)**: 运行所有记录在output_list的Output上游节点/运行所有节点
+
+----
+
+
+### Basic_node (class)
+**Basic_node** 是所有节点的基类。编写节点规则：1.Basic_node，2.定义input/output函数，3.在 core 函数中编写节点的功能实现（需要返回True/False）。
 
 ```python
 from floa import Basic_node, Output_manager
 
+#Basic_node 是所有节点的基类。你可以通过继承它来定义输入输出（input/output），然后在 core 里写代码，实现具体的节点功能。
 class x2node(Basic_node):
-
     def input(self, n):
         self.n = self.create_input_verify(n)
-
     def output(self):
         self.output_nx2 = self.create_output_required()
-
     def core(self) -> bool:
         nx2 = self.n.value * 2
         self.output_nx2.complete(nx2)
@@ -230,84 +393,22 @@ n3 = x2node(om,n2.output_nx2)
 
 n1.input(3)
 n1.run_chain()
-print(f"n1输出:{n1.output_nx2}，n2输出:{n2.output_nx2}，n3输出:{n3.output_nx2}")
+print(f"n1输出:{n1.output_nx2},n2输出:{n2.output_nx2},n3输出:{n3.output_nx2},")
 ```
-输出
-```
-n1输出:6，n2输出:12，n3输出:24
-```
-
----
-
-## Output 
-Output 类用于表示一个输出对象。它包含以下属性和方法：
-
-#### 属性
-- **parent**: 父节点，表示该输出的来源节点。
-
-- **active**: 表示该输出(本对象)是否处于激活状态。
-
-- **done**: 表示该输出(本对象)是否已完成。
-
-- **value**: 输出的值，Output核心，整个对象就是为了管理这个值，这个值可以是任何类型的数据。
-
-- **child**: 子节点列表，表示所有引用了这个输出值(Output.value)的下游节点。
-
-#### 方法
-- **\_\_init__(self, parent=None, value=None, active=True, done=False)**: 初始化输出对象。
-
-- **\_\_call__(self)**: 返回输出值(Output.value)。
-
-- **\_\_str__(self)**: 返回输出值(Output.value)的字符串表示。
-
-- **\_\_repr__(self)**: 返回输出值(Output.value)的字符串表示。
-
-- **complete(self, value)**: 标记输出对象完成并设置值。
-
-- **activate(self)**: 激活输出对象(可用)。
-
-- **activate_and_complete(self, value, parent)**: 激活输出对象可用并设置完成，同时设置父节点。
-
-- **deactivate(self)**: 把输出对象标记为不可用。
-
-- **is_deactivated(self)**: 输出对象是否为不可用。
-
-- **val**: 属性，返回输出值(Output.done)。
-----
-## Output_manager
-**Output_manager** 类用于管理输出(**Output**)对象。所有的 **Output** 对象都应该由 **Output_mansager** 创建。 它包含以下属性和方法：
-
-#### 属性
-**output_list**: 用于存储**Output**对象列表。
-
-__init__(self): 初始化输出管理器。
-
-- **create_output_required(self, parent, value=None, active=True, done=False) -> Output**: 创建一个必定有输出值的Output对象。节点计算完成后必定会对这个对象进行赋值(Output.value)，
-
-- **create_output_optional(self, parent=None, value=None, active=False, done=False) -> Output**: 创建一个未激活的Output对象。节点执行完毕后决定不要不要激活这个Output，一般作为控制节点分支使用
-
-- **create_output_complete(self, value, parent=None, active=True, done=True) -> Output**: 创建一个已完成的Output对象。一般作为常量使用
-
-- **run_all_outputs(self)**: 执行所有记录在output_list的Output上游节点。执行所有节点
-
-----
-
-## Basic_node 
-**Basic_node** 类是一个抽象基类，通过继承**Basic_node**实现具体的节点功能。它包含以下属性和方法：
 
 #### 属性
 
 - **om**: Output_manager的实例，用来新建和管理Output对象。
 
-- **done**: 表示节点是否已完成计算。
+- **done**: 表示本节点是否已完成计算，节点默认只会计算一次。
 
 - **active**: 表示节点是否处于激活状态。
 
 - **list_output**: 节点输出对象列表。
 
-- **list_input_verify**: 必填输入对象列表，执行节点前会确保该输入值已完成。
+- **list_input_verify**: 输入对象，运行前会验证该对象是否已执行，若未执行则会运行上游节点以获取输入对象的值。
 
-- **list_input_optional**: 可选输入对象列表，执行节点时会尝试执行可选输入。
+- **list_input_optional**: 输入对象，运行节点前不会验证输入对象的上游节点是否已经执行了。
 
 - **dict_output**: 输出字典。值与list_output一致，多了输出对象的键值名称
 
@@ -315,39 +416,39 @@ __init__(self): 初始化输出管理器。
 
 - **retry_count**: 记录重试次数。
 
-- **max_retries**: 最大重试次数。
+- **max_retries**: 最大重试次数，如果core返回False，会重新调用core直到达到最大重试次数。
 
 #### 方法
 
 - **\_\_init__(self, om: Output_manager, *args, \*\*kwargs)**: 初始化节点对象。
 
-- **\_\_call__(self)**: 执行节点。
+- **\_\_call__(self)**: 运行节点。
 
-- **verify(self, *args: list[Output])**: 验证输入数据，如果上游节点没有执行会向上执行，直至所需的输入对象全部完成。
+- **verify(self, *args: list[Output])**: 验证输入数据，如果上游节点没有运行会向上运行，直至所需的输入对象全部完成。
 
-- **create_input_verify(self, value: Output)**: 创建一个输入对象，执行节点前会验证这个输入对象是已完成的，若该输入对象未完成，会执行该对象的上游节点。
+- **create_input_verify(self, value: Output)**: 创建一个输入对象，运行节点前会验证这个输入对象是已完成的，若该输入对象未完成，会运行该对象的上游节点。
 
-- **create_input_optional(self, value: Output)**: 创建一个输入对象，节点执行时候，这个输入对象是可选的，即使这个输入对象未完成，也不会执行这个输入对象的上游节点。
+- **create_input_optional(self, value: Output)**: 创建一个输入对象，节点运行时候，这个输入对象是可选的，即使这个输入对象未完成，也不会运行这个输入对象的上游节点。
 
-- **create_output_required(self)**: 创建一个输出对象，节点执行完成后一定会对这个对象进行赋值并标记完成。
+- **create_output_required(self)**: 创建一个输出对象，节点运行完成后一定会对这个对象进行赋值并标记完成。
 
-- **create_output_optional(self)**: 创建一个默认状态为未激活状态的输出对象，节点执行完成后根据具体情况来决定是否激活完成这个输出对象，通常用于节点分支，或可选输出。
+- **create_output_optional(self)**: 创建一个默认状态为未激活状态的输出对象，节点运行完成后根据具体情况来决定是否激活完成这个输出对象，通常用于节点分支，或可选输出。
 
-- **run_chain(self)**: 链式执行，执行自身节点后会向下执行所有引用本节点输出(包含间接引用)的节点。
+- **run_chain(self)**: 链式运行，运行自身节点后会向下运行所有引用本节点输出(包含间接引用)的节点。
 
-- **run(self)**: 执行本节点。
+- **run(self)**: 运行本节点。
 
-- **core(self)**: 抽象方法，继承本对象后，要编写具体实现的节点功能。
+- **core(self)**: 节点功能的具体实现，继承本对象后要重写这个方法。
 
-- **input(self)**: 抽象方法，继承本对象后，要编写具体的输入节点有哪些。
+- **input(self)**: 定义输入有哪些(Output对象)，继承本对象后要重写这个方法。
 
-- **output(self)**: 抽象方法，继承本对象后，要编写具体的输出节点有哪些。
+- **output(self)**: 定义输出有哪些(Output对象)，继承本对象后要重写这个方法。
 
 - **set_deactivate(self)**: 设置节点为失效状态。
 
 - **set_complete(self)**: 设置节点为完成状态。
 
-- **set_max_retries(self, max_retries: int)**: 设置执行节点(core)失败重试次数。
+- **set_max_retries(self, max_retries: int)**: 设置运行节点(core)失败重试次数。
 
 - **print(self, *args)**: 打印节点信息。
 
