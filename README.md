@@ -379,6 +379,7 @@ from floa import Basic_node, Output_manager
 class x2node(Basic_node):
     def input(self, n):
         self.n = self.create_input_verify(n)
+        return self
     def output(self):
         self.output_nx2 = self.create_output_required()
     def core(self) -> bool:
@@ -388,8 +389,8 @@ class x2node(Basic_node):
 
 om = Output_manager()
 n1 = x2node(om)
-n2 = x2node(om,n1.output_nx2)
-n3 = x2node(om,n2.output_nx2)
+n2 = x2node(om).input(n1.output_nx2)
+n3 = x2node(om).input(n2.output_nx2)
 
 n1.input(3)
 n1.run_chain()
