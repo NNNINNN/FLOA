@@ -394,7 +394,11 @@ n3 = x2node(om).input(n2.output_nx2)
 
 n1.input(3)
 n1.run_chain()
-print(f"n1输出:{n1.output_nx2},n2输出:{n2.output_nx2},n3输出:{n3.output_nx2},")
+print(f"n1输出:{n1.output_nx2},n2输出:{n2.output_nx2},n3输出:{n3.output_nx2}")
+```
+输出
+```
+n1输出:6,n2输出:12,n3输出:24
 ```
 
 #### 属性
